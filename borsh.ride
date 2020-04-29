@@ -1,0 +1,174 @@
+
+{-# STDLIB_VERSION 3 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+func decodeInt8(data: ByteVector, offset: Int) = {
+    if (data.size() < 1) then throw("decode u8 error, data must be at least 1 byte")
+    else if (data.size() < offset) then throw("decode u8 error, decoding is finish")
+    else
+        let x0 = drop(data,offset).take(1)
+        let x1 = (base16'00000000000000' + x0).toInt(0)
+        if (x1 < 128) then [x1, offset + 1]
+        else [(base16'ffffffffffffff' + x0).toInt(0), offset + 1]
+}
+
+func decodeInt16(data: ByteVector, offset: Int) = {
+    if (data.size() < 2) then throw("decode u16 error, data must be at least 2 bytes")
+    else if (data.size() < offset) then throw("decode u16 error, decoding is finish")
+    else
+        let x0 = drop(data,offset)
+        let x1 = x0.take(1)
+        let x2 = drop(x0,1).take(1)
+        if (getElement(decodeInt8(x2,0), 0) >= 0) then [(base16'000000000000'+x2+x1).toInt(0), offset + 2]
+        else [(base16'ffffffffffff'+x2+x1).toInt(0), offset + 2]
+}
+
+func decodeInt32(data: ByteVector, offset: Int) = {
+    if (data.size() < 4) then throw("decode u32 error, data must be at least 4 bytes")
+    else if (data.size() < offset) then throw("decode u32 error, decoding is finish")
+    else
+        let x0 = drop(data,offset)
+        let x1 = x0.take(1)
+        let x2 = drop(x0,1).take(1)
+        let x3 = drop(x0,2).take(1)
+        let x4 = drop(x0,3).take(1)
+        if (getElement(decodeInt8(x4,0), 0) >= 0) then [(base16'00000000'+x4+x3+x2+x1).toInt(0), offset + 4]
+        else [(base16'ffffffff'+x4+x3+x2+x1).toInt(0), offset + 4]
+}
+
+func decodeInt64(data: ByteVector, offset: Int) = {
+    if (data.size() < 8) then throw("decode u32 error, data must be at least 8 bytes")
+    else if (data.size() < offset) then throw("decode u32 error, decoding is finish")
+    else
+        let x0 = drop(data,offset)
+        let x1 = x0.take(1)
+        let x2 = drop(x0,1).take(1)
+        let x3 = drop(x0,2).take(1)
+        let x4 = drop(x0,3).take(1)
+        let x5 = drop(x0,4).take(1)
+        let x6 = drop(x0,5).take(1)
+        let x7 = drop(x0,6).take(1)
+        let x8 = drop(x0,7).take(1)
+        [(x8+x7+x6+x5+x4+x3+x2+x1).toInt(0), offset + 8]
+}
+
+func decodeBool(data: ByteVector, offset: Int) = {
+    let decoded1 = decodeInt8(data, offset)
+    [getElement(decoded1,0) != 0, getElement(decoded1,1)]
+}
+
+func decodeBytes32(data: ByteVector, offset: Int) = {
+    if (data.size() < 32) then throw("decode bytes32 error, data must be at least 32 bytes")
+    else
+        [drop(data,offset).take(32), offset + 32]
+}
+
+func decodeBytes64(data: ByteVector, offset: Int) = {
+    if (data.size() < 64) then throw("decode bytes64 error, data must be at least 64 bytes")
+    else
+        [drop(data,offset).take(64), offset + 64]
+}
+
+func decodeBytes65(data: ByteVector, offset: Int) = {
+    if (data.size() < 65) then throw("decode bytes65 error, data must be at least 65 bytes")
+    else
+        [drop(data,offset).take(65), offset + 65]
+}
+
+func decodeBytes(data: ByteVector, offset: Int) = {
+    let decoded1 = decodeInt32(data, offset)
+    let bytesSize = getElement(decoded1,0)
+    let nextOffset = getElement(decoded1,1)
+    [drop(data,nextOffset).take(bytesSize), nextOffset + bytesSize]
+}
+
+func decodeString(data: ByteVector, offset: Int) = {
+    let decoded1 = decodeInt32(data, offset)
+    let bytesSize = getElement(decoded1,0)
+    let nextOffset = getElement(decoded1,1)
+    [drop(data,nextOffset).take(bytesSize).toUtf8String(), nextOffset + bytesSize]
+}
+
+@Callable(contextObj)
+func testDecodeInt16(data: ByteVector) = {
+    let offset = 0
+    let x1 = decodeInt16(data, offset)
+
+    WriteSet([DataEntry("i16", getElement(x1,0))])
+}
+
+@Callable(contextObj)
+func testDecodeInt64(data: ByteVector) = {
+    let offset = 0
+    let decoded = decodeInt64(data, offset)
+    WriteSet([DataEntry("i64", getElement(decoded,0))])
+}
+
+@Callable(contextObj)
+func testDecodeString(data: ByteVector) = {
+    let offset = 0
+    let decoded = decodeString(data, offset)
+    WriteSet([DataEntry("string", getElement(decoded,0))])
+}
+
+@Callable(contextObj)
+func testDecodeBytes(data: ByteVector) = {
+    let offset = 0
+    let decoded = decodeBytes(data, offset)
+    WriteSet([DataEntry("bytes", getElement(decoded,0))])
+}
+
+@Callable(contextObj)
+func testCryptoPrice(data: ByteVector) = {
+    let offset = 0
+    let x1 = decodeString(data, offset)
+    match (getElement(x1,1)) {
+        case t:Int =>
+            let x2 = decodeInt64(data, t)
+            WriteSet([
+                DataEntry("symbol", getElement(x1,0)),
+                DataEntry("multiplier", getElement(x2,0))
+            ])
+        case _ => throw("error decoding")
+    }
+}
+
+@Callable(contextObj)
+func testDecodeBytes32(data: ByteVector) = {
+    let offset = 0
+    let decoded = decodeBytes32(data, offset)
+    WriteSet([DataEntry("bytes", getElement(decoded,0))])
+}
+
+@Callable(contextObj)
+func testIntFromBytes(data: ByteVector) = {
+    WriteSet([DataEntry("bytesToInt", data.toInt(0) )])
+}
+
+@Callable(contextObj)
+func testStringFromBytes(data: ByteVector) = {
+    WriteSet([DataEntry("bytesToString", data.toUtf8String())])
+}
+
+@Callable(contextObj)
+func setValidator(validator: ByteVector) = {
+   if (contextObj.caller == this)
+   then
+       WriteSet([DataEntry("validator", validator)])
+   else
+       throw("Only owner can use this function.")
+}
+
+@Callable(contextObj)
+func reportData(data: String) = {
+    let validator = getBinary(this,"validator")
+    if (contextObj.caller.bytes == validator)
+    then
+        WriteSet([DataEntry("data_reported", data)])
+    else
+        throw("Only validator can use this function.")
+}
+
+# @Verifier(tx)
+# func standardVerifier() = sigVerify(tx.bodyBytes, tx.proofs[0], tx.senderPublicKey)
