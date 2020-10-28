@@ -1,0 +1,58 @@
+{-# STDLIB_VERSION 4 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+func toDelEntry(acc:List[DeleteEntry], s: String) = acc++[DeleteEntry(s)]
+
+func setReferenceData(acc: List[IntegerEntry], refData: String) = {
+  let vals = refData.split(",")
+  let l = size(vals)
+  if l != 4 then throw("relay data must consist of 4 fields (symbol,rate,resolveTime,requestId)")
+  else
+    acc:+
+    IntegerEntry(vals[0] + "/rate", parseIntValue(vals[1])):+
+    IntegerEntry(vals[0] + "/resolveTime", parseIntValue(vals[2])):+
+    IntegerEntry(vals[0] + "/requestId", parseIntValue(vals[3]))
+}
+
+@Callable(contextObj)
+func setMultiplier(multiplier: Int) = {
+  if (contextObj.caller != this) then throw("not authorized to set multiplier")
+  else
+    [IntegerEntry("multiplier", multiplier)]
+}
+
+@Callable(contextObj)
+func deleteKeys(keys: List[String]) = {
+  if (contextObj.caller != this) then throw("not authorized to delete keys")
+  else
+    let l = size(keys);
+    if l == 0 then []
+    else if l == 1 then FOLD<1>(keys, [], toDelEntry)
+    else if l == 10 then FOLD<10>(keys, [], toDelEntry)
+    else if l == 20 then FOLD<20>(keys, [], toDelEntry)
+    else if l == 50 then FOLD<50>(keys, [], toDelEntry)
+    else
+      throw("delete size can only be 1,10,20,50")
+}
+
+@Callable(contextObj)
+func relay(dataList: List[String]) = {
+  if (contextObj.caller != this) then throw("not authorized to relay")
+  else
+    let l = size(dataList)
+    if l == 0 then []
+    else if l == 1 then FOLD<1>(dataList, [], setReferenceData)
+    else if l == 2 then FOLD<2>(dataList, [], setReferenceData)
+    else if l == 3 then FOLD<3>(dataList, [], setReferenceData)
+    else if l == 4 then FOLD<4>(dataList, [], setReferenceData)
+    else if l == 5 then FOLD<5>(dataList, [], setReferenceData)
+    else if l == 6 then FOLD<6>(dataList, [], setReferenceData)
+    else if l == 7 then FOLD<7>(dataList, [], setReferenceData)
+    else if l == 8 then FOLD<8>(dataList, [], setReferenceData)
+    else if l == 9 then FOLD<9>(dataList, [], setReferenceData)
+    else if l == 10 then FOLD<10>(dataList, [], setReferenceData)
+    else if l == 20 then FOLD<20>(dataList, [], setReferenceData)
+    else
+      throw("feeding size can only be 1,2,3,4,5,6,7,8,9,10,20")
+}
